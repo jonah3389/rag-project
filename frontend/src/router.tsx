@@ -1,0 +1,78 @@
+import { createBrowserRouter, Navigate } from 'react-router-dom';
+import App from './App';
+import Login from './modules/auth/pages/Login';
+import Register from './modules/auth/pages/Register';
+import Dashboard from './modules/dashboard/pages/Dashboard';
+import ChatPage from './modules/chat/pages/ChatPage';
+import KnowledgeBasePage from './modules/knowledge/pages/KnowledgeBasePage';
+import DocumentPage from './modules/document/pages/DocumentPage';
+import LLMConfigPage from './modules/llm/pages/LLMConfigPage';
+import NotFound from './shared/components/NotFound';
+import ProtectedRoute from './shared/components/ProtectedRoute';
+
+const router = createBrowserRouter([
+  {
+    path: '/',
+    element: <App />,
+    children: [
+      {
+        index: true,
+        element: <Navigate to="/dashboard" replace />,
+      },
+      {
+        path: 'login',
+        element: <Login />,
+      },
+      {
+        path: 'register',
+        element: <Register />,
+      },
+      {
+        path: 'dashboard',
+        element: (
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'chat',
+        element: (
+          <ProtectedRoute>
+            <ChatPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'knowledge',
+        element: (
+          <ProtectedRoute>
+            <KnowledgeBasePage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'document',
+        element: (
+          <ProtectedRoute>
+            <DocumentPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'llm-config',
+        element: (
+          <ProtectedRoute>
+            <LLMConfigPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: '*',
+        element: <NotFound />,
+      },
+    ],
+  },
+]);
+
+export default router;
