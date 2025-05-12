@@ -1,4 +1,6 @@
-import axios, { AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
+import axios from 'axios';
+// 在 axios 1.9.0 中，类型可能已经被移动或重命名
+// 我们可以直接使用 axios 实例而不需要显式导入类型
 
 // 创建 axios 实例
 const api = axios.create({
@@ -26,10 +28,10 @@ api.interceptors.request.use(
 
 // 响应拦截器
 api.interceptors.response.use(
-  (response: AxiosResponse) => {
+  (response) => {
     return response;
   },
-  (error: AxiosError) => {
+  (error) => {
     if (error.response) {
       // 处理 401 未授权错误
       if (error.response.status === 401) {
@@ -37,7 +39,7 @@ api.interceptors.response.use(
         localStorage.removeItem('user');
         window.location.href = '/login';
       }
-      
+
       // 处理其他错误
       const errorMessage = error.response.data.detail || '请求失败';
       console.error('API Error:', errorMessage);
@@ -46,7 +48,7 @@ api.interceptors.response.use(
     } else {
       console.error('Request error:', error.message);
     }
-    
+
     return Promise.reject(error);
   }
 );

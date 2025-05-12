@@ -1,7 +1,18 @@
 import { Outlet } from 'react-router-dom';
-import { useState, createContext } from 'react';
+import { useState, useEffect, createContext } from 'react';
 import Layout from './shared/components/Layout';
-import { User } from './modules/auth/types/user';
+
+// 直接在 App.tsx 中定义 User 类型
+interface User {
+  id: number;
+  username: string;
+  email: string;
+  full_name?: string;
+  is_active: boolean;
+  is_superuser: boolean;
+  created_at: string;
+  updated_at: string;
+}
 
 // 创建认证上下文
 interface AuthContextType {
@@ -12,7 +23,7 @@ interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType>({
   user: null,
-  setUser: () => {},
+  setUser: () => { },
   isAuthenticated: false,
 });
 
@@ -20,7 +31,7 @@ function App() {
   const [user, setUser] = useState<User | null>(null);
 
   // 从本地存储中恢复用户信息
-  useState(() => {
+  useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       try {
@@ -30,7 +41,7 @@ function App() {
         localStorage.removeItem('user');
       }
     }
-  });
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, setUser, isAuthenticated: !!user }}>

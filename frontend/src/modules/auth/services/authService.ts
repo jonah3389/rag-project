@@ -1,5 +1,33 @@
 import api from '../../../shared/services/api';
-import { User, UserLogin, UserRegister, Token } from '../types/user';
+
+// 直接在文件中定义接口
+interface User {
+  id: number;
+  username: string;
+  email: string;
+  full_name?: string;
+  is_active: boolean;
+  is_superuser: boolean;
+  created_at: string;
+  updated_at?: string;
+}
+
+interface UserLogin {
+  username: string;
+  password: string;
+}
+
+interface UserRegister {
+  username: string;
+  email: string;
+  password: string;
+  full_name?: string;
+}
+
+interface Token {
+  access_token: string;
+  token_type: string;
+}
 
 /**
  * 用户登录
@@ -11,14 +39,14 @@ export const login = async (credentials: UserLogin): Promise<{ user: User; token
   const formData = new FormData();
   formData.append('username', credentials.username);
   formData.append('password', credentials.password);
-  
+
   const tokenResponse = await api.post<Token>('/auth/login', formData);
   const token = tokenResponse.data;
-  
+
   // 设置令牌后获取用户信息
   api.defaults.headers.common['Authorization'] = `Bearer ${token.access_token}`;
   const userResponse = await api.get<User>('/auth/me');
-  
+
   return {
     user: userResponse.data,
     token,
