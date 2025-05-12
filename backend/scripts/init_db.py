@@ -10,11 +10,20 @@ import sys
 # 添加项目根目录到 Python 路径
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# 导入顺序很重要，先导入基础模块
 from app.db.base import Base
 from app.db.session import engine, SessionLocal
 from app.core.config import settings
-from app.modules.auth import crud, schemas
+
+# 先导入其他模型，再导入 User 模型
+from app.modules.chat.models.conversation import Conversation, Message
+from app.modules.knowledge.models.knowledge_base import KnowledgeBase, Document
+from app.modules.document.models.document import DocumentProcessTask
 from app.modules.llm.models.llm_config import LLMConfig
+
+# 最后导入 User 模型和相关模块
+from app.modules.auth import crud, schemas
+from app.modules.auth.models.user import User
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
