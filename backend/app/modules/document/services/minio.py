@@ -7,12 +7,11 @@ MinIO 服务
 import io
 from typing import Optional
 
+from app.core.config import settings
+from app.core.logging import setup_logging
 from minio import Minio
 from minio.error import S3Error
 from urllib3.exceptions import MaxRetryError, NewConnectionError
-
-from app.core.config import settings
-from app.core.logging import setup_logging
 
 logger = setup_logging()
 
@@ -29,15 +28,16 @@ class MinioService:
             secure=settings.MINIO_SECURE,
         )
         self.bucket_name = settings.MINIO_BUCKET_NAME
-        self.is_available = False
         try:
             self._ensure_bucket_exists()
-            self.is_available = True
+            logger.info("MinIO 服务连接成功")
         except (S3Error, MaxRetryError, NewConnectionError) as e:
             logger.error(f"MinIO 服务不可用: {e}")
-            logger.warning(
-                "应用程序将在没有 MinIO 服务的情况下继续运行，但文件存储功能将不可用"
-            )
+            logger.error("MinIO 是应用的核心依赖，请确保 MinIO 服务已启动并且配置正确")
+            logger.error("应用程序将退出")
+            import sys
+
+            sys.exit(1)
 
     def _ensure_bucket_exists(self):
         """确保存储桶存在"""
@@ -63,9 +63,6 @@ class MinioService:
         Returns:
             bool: 是否上传成功
         """
-        if not self.is_available:
-            logger.warning("MinIO 服务不可用，无法上传文件")
-            return False
 
         try:
             file_stream = io.BytesIO(file_content)
@@ -94,9 +91,6 @@ class MinioService:
         Returns:
             Optional[bytes]: 文件内容，如果下载失败则返回 None
         """
-        if not self.is_available:
-            logger.warning("MinIO 服务不可用，无法下载文件")
-            return None
 
         try:
             response = self.client.get_object(
@@ -122,9 +116,6 @@ class MinioService:
         Returns:
             bool: 是否删除成功
         """
-        if not self.is_available:
-            logger.warning("MinIO 服务不可用，无法删除文件")
-            return False
 
         try:
             self.client.remove_object(
@@ -148,9 +139,6 @@ class MinioService:
         Returns:
             Optional[str]: 文件 URL，如果获取失败则返回 None
         """
-        if not self.is_available:
-            logger.warning("MinIO 服务不可用，无法获取文件 URL")
-            return None
 
         try:
             url = self.client.presigned_get_object(
