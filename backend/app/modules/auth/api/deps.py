@@ -3,7 +3,8 @@
 """
 认证相关依赖
 """
-from typing import Generator
+
+from typing import Optional
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -12,38 +13,46 @@ from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.logging import setup_logging
 from app.core.security import ALGORITHM
 from app.db.session import get_db
 from app.modules.auth import crud
 from app.modules.auth.models.user import User
 from app.modules.auth.schemas.user import TokenPayload
 
+# 设置日志
+logger = setup_logging()
+
 # 令牌 URL
-reusable_oauth2 = OAuth2PasswordBearer(
-    tokenUrl=f"{settings.API_V1_STR}/auth/login"
-)
+reusable_oauth2 = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login")
 
 
 def get_current_user(
-    db: Session = Depends(get_db), token: str = Depends(reusable_oauth2)
+    db: Optional[Session] = Depends(get_db), token: str = Depends(reusable_oauth2)
 ) -> User:
     """
     获取当前用户
-    
+
     Args:
         db: 数据库会话
         token: JWT 令牌
-        
+
     Returns:
         User: 当前用户
-        
+
     Raises:
         HTTPException: 认证失败
     """
-    try:
-        payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[ALGORITHM]
+    # 检查数据库是否可用
+    if db is None:
+        logger.error("数据库不可用，无法获取当前用户")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="数据库服务不可用，请稍后再试",
         )
+
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[ALGORITHM])
         token_data = TokenPayload(**payload)
     except (jwt.JWTError, ValidationError):
         raise HTTPException(
@@ -64,13 +73,13 @@ def get_current_active_user(
 ) -> User:
     """
     获取当前活跃用户
-    
+
     Args:
         current_user: 当前用户
-        
+
     Returns:
         User: 当前活跃用户
-        
+
     Raises:
         HTTPException: 用户未激活
     """
@@ -87,13 +96,13 @@ def get_current_active_superuser(
 ) -> User:
     """
     获取当前活跃超级用户
-    
+
     Args:
         current_user: 当前用户
-        
+
     Returns:
         User: 当前活跃超级用户
-        
+
     Raises:
         HTTPException: 权限不足
     """
