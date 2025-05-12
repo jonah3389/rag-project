@@ -23,7 +23,12 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 天
 
     # CORS 配置
-    BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = []
+    BACKEND_CORS_ORIGINS: List[Union[AnyHttpUrl, str]] = [
+        "http://localhost:5173",  # 前端开发服务器
+        "http://localhost:5174",  # 前端开发服务器（备用端口）
+        "http://localhost:4173",  # 前端预览服务器
+        "http://localhost:3000",  # 可能的其他前端服务器
+    ]
 
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
     def assemble_cors_origins(cls, v: Union[str, List[str]]) -> Union[List[str], str]:
@@ -31,7 +36,7 @@ class Settings(BaseSettings):
             return [i.strip() for i in v.split(",")]
         elif isinstance(v, (list, str)):
             return v
-        raise ValueError(v)
+        raise ValueError(f"Invalid CORS origins format: {v}")
 
     # 数据库配置
     SQLALCHEMY_DATABASE_URI: Optional[str] = (

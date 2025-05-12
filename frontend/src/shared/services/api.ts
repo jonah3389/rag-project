@@ -4,11 +4,13 @@ import axios from 'axios';
 
 // 创建 axios 实例
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1',
+  // 使用相对路径，通过 Vite 代理转发到后端
+  baseURL: '/api/v1',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // 允许跨域请求携带 cookies
 });
 
 // 请求拦截器

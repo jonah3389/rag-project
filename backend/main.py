@@ -5,14 +5,13 @@
 """
 
 import uvicorn
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.exc import OperationalError
-
 from app.core.config import settings
 from app.core.logging import setup_logging
+from app.core.middleware import setup_middlewares
 from app.db.base_class import Base
 from app.db.session import engine
+from fastapi import FastAPI
+from sqlalchemy.exc import OperationalError
 
 # 设置日志
 logger = setup_logging()
@@ -44,15 +43,8 @@ app = FastAPI(
     redoc_url=f"{settings.API_V1_STR}/redoc",
 )
 
-# 设置 CORS
-if settings.BACKEND_CORS_ORIGINS:
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=[str(origin) for origin in settings.BACKEND_CORS_ORIGINS],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+# 设置中间件
+setup_middlewares(app)
 
 # 注册路由
 app.include_router(auth_router, prefix=f"{settings.API_V1_STR}/auth", tags=["认证"])
