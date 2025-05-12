@@ -3,6 +3,7 @@ import App from './App';
 import Home from './modules/home/pages/Home';
 import Login from './modules/auth/pages/Login';
 import Register from './modules/auth/pages/Register';
+import AuthTest from './modules/auth/pages/AuthTest';
 import Dashboard from './modules/dashboard/pages/Dashboard';
 // 暂时注释掉缺失的组件导入，等待后续实现
 // import ChatPage from './modules/chat/pages/ChatPage';
@@ -28,6 +29,10 @@ const router = createBrowserRouter([
       {
         path: 'register',
         element: <Register />,
+      },
+      {
+        path: 'auth-test',
+        element: <AuthTest />,
       },
       {
         path: 'dashboard',

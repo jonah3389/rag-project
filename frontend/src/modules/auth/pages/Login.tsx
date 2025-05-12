@@ -1,4 +1,4 @@
-import { useState, useContext } from 'react';
+import { useState, useContext, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../../../App';
 import { login } from '../services/authService';
@@ -7,38 +7,57 @@ const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
-  
+
   const { setUser } = useContext(AuthContext);
   const navigate = useNavigate();
   const location = useLocation();
-  
+
   // 获取重定向路径
   const from = location.state?.from?.pathname || '/dashboard';
 
+  // 检查是否有来自注册页面的消息
+  useEffect(() => {
+    const message = location.state?.message;
+    if (message) {
+      setSuccess(message);
+      // 清除 location state 中的消息，防止刷新后再次显示
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!username || !password) {
       setError('请输入用户名和密码');
+      setSuccess('');
       return;
     }
-    
+
     try {
       setLoading(true);
       setError('');
-      
+      setSuccess('');
+
       const { user, token } = await login({ username, password });
-      
+
       // 保存令牌和用户信息
       localStorage.setItem('token', token.access_token);
       localStorage.setItem('user', JSON.stringify(user));
-      
+
       // 更新认证状态
       setUser(user);
-      
-      // 重定向到之前的页面或仪表盘
-      navigate(from, { replace: true });
+
+      // 显示成功消息
+      setSuccess('登录成功，正在跳转...');
+
+      // 延迟跳转，让用户看到成功消息
+      setTimeout(() => {
+        // 重定向到之前的页面或仪表盘
+        navigate(from, { replace: true });
+      }, 1000);
     } catch (err: any) {
       setError(err.response?.data?.detail || '登录失败，请检查您的凭据');
     } finally {
@@ -58,14 +77,19 @@ const Login = () => {
             </Link>
           </p>
         </div>
-        
+
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {error && (
             <div className="bg-red-50 border-l-4 border-red-500 p-4">
               <p className="text-sm text-red-700">{error}</p>
             </div>
           )}
-          
+          {success && (
+            <div className="bg-green-50 border-l-4 border-green-500 p-4">
+              <p className="text-sm text-green-700">{success}</p>
+            </div>
+          )}
+
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
               <label htmlFor="username" className="sr-only">

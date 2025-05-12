@@ -36,11 +36,15 @@ interface Token {
  */
 export const login = async (credentials: UserLogin): Promise<{ user: User; token: Token }> => {
   // 使用表单数据格式发送请求（OAuth2 要求）
-  const formData = new FormData();
+  const formData = new URLSearchParams();
   formData.append('username', credentials.username);
   formData.append('password', credentials.password);
 
-  const tokenResponse = await api.post<Token>('/auth/login', formData);
+  const tokenResponse = await api.post<Token>('/auth/login', formData, {
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+  });
   const token = tokenResponse.data;
 
   // 设置令牌后获取用户信息

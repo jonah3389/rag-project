@@ -10,37 +10,51 @@ const Register = () => {
   const [fullName, setFullName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  
+
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // 表单验证
     if (!username || !email || !password || !confirmPassword) {
       setError('请填写所有必填字段');
       return;
     }
-    
+
     if (password !== confirmPassword) {
       setError('两次输入的密码不一致');
       return;
     }
-    
+
+    // 验证邮箱格式
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError('请输入有效的电子邮箱地址');
+      return;
+    }
+
+    // 验证密码强度
+    if (password.length < 8) {
+      setError('密码长度至少为8个字符');
+      return;
+    }
+
     try {
       setLoading(true);
       setError('');
-      
+
       await register({
         username,
         email,
         password,
         full_name: fullName || undefined,
       });
-      
+
       // 注册成功，跳转到登录页面
       navigate('/login', { state: { message: '注册成功，请登录' } });
     } catch (err: any) {
+      console.error('Registration error:', err);
       setError(err.response?.data?.detail || '注册失败，请稍后再试');
     } finally {
       setLoading(false);
@@ -59,14 +73,14 @@ const Register = () => {
             </Link>
           </p>
         </div>
-        
+
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {error && (
             <div className="bg-red-50 border-l-4 border-red-500 p-4">
               <p className="text-sm text-red-700">{error}</p>
             </div>
           )}
-          
+
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
               <label htmlFor="username" className="sr-only">
