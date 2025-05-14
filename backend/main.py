@@ -5,23 +5,24 @@
 """
 
 import uvicorn
+from fastapi import FastAPI
+from sqlalchemy.exc import OperationalError
+
 from app.core.config import settings
 from app.core.logging import setup_logging
 from app.core.middleware import setup_middlewares
 from app.db.base_class import Base
 from app.db.session import engine
-from fastapi import FastAPI
-from sqlalchemy.exc import OperationalError
-
-# 设置日志
-logger = setup_logging()
 
 # 导入各模块的路由
 from app.modules.auth.api.routes import router as auth_router
 from app.modules.chat.api.routes import router as chat_router
-from app.modules.document.api.routes import router as document_router
 from app.modules.knowledge.api.routes import router as knowledge_router
 from app.modules.llm.api.routes import router as llm_router
+
+# 设置日志
+logger = setup_logging()
+
 
 # 尝试创建数据库表
 try:
@@ -52,9 +53,7 @@ app.include_router(chat_router, prefix=f"{settings.API_V1_STR}/chat", tags=["智
 app.include_router(
     knowledge_router, prefix=f"{settings.API_V1_STR}/knowledge", tags=["知识库"]
 )
-app.include_router(
-    document_router, prefix=f"{settings.API_V1_STR}/document", tags=["文档处理"]
-)
+# 文档处理功能已集成到知识库模块中
 app.include_router(llm_router, prefix=f"{settings.API_V1_STR}/llm", tags=["LLM配置"])
 
 
