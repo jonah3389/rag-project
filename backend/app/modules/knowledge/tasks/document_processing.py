@@ -1,5 +1,7 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-文档处理任务执行器
+文档处理任务
 """
 
 import logging
@@ -7,6 +9,8 @@ import os
 import tempfile
 import time
 from typing import Dict
+
+from celery_app.celery import celery_app
 
 from app.core.config import settings
 from app.db.session import SessionLocal
@@ -24,11 +28,12 @@ from app.modules.knowledge.services.vector_store import VectorStore
 logger = logging.getLogger(__name__)
 
 
+@celery_app.task(name="process_document")
 def process_document(task_id: int) -> Dict:
     """
     处理文档任务
 
-    此函数设计为在独立线程中运行，不会阻塞主应用程序
+    此函数设计为在Celery worker中运行，不会阻塞主应用程序
 
     Args:
         task_id: 任务ID
