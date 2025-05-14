@@ -4,7 +4,6 @@
 应用配置
 """
 
-import secrets
 from typing import List, Optional, Union
 
 from pydantic import AnyHttpUrl, field_validator
@@ -19,7 +18,9 @@ class Settings(BaseSettings):
     PROJECT_DESCRIPTION: str = "基于大语言模型的综合性应用平台"
     PROJECT_VERSION: str = "0.1.0"
     API_V1_STR: str = "/api/v1"
-    SECRET_KEY: str = secrets.token_urlsafe(32)
+    SECRET_KEY: str = (
+        "YYVNy41zUn3UWRIVUV89l2AnF-lwL2wLhJUlKLJl1x4"  # secrets.token_urlsafe(32)
+    )
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 天
 
     # CORS 配置
@@ -36,11 +37,10 @@ class Settings(BaseSettings):
             return [i.strip() for i in v.split(",")]
         elif isinstance(v, (list, str)):
             return v
-        raise ValueError(f"Invalid CORS origins format: {v}")
 
     # 数据库配置
     SQLALCHEMY_DATABASE_URI: Optional[str] = (
-        "mysql+pymysql://root:password@localhost/rag_platform"
+        "mysql+pymysql://root:password@localhost/rag_platform?charset=utf8mb4&time_zone=Asia/Shanghai"
     )
 
     # MinIO 配置
@@ -54,15 +54,32 @@ class Settings(BaseSettings):
     REDIS_HOST: str = "localhost"
     REDIS_PORT: int = 6379
     REDIS_DB: int = 0
-    REDIS_PASSWORD: Optional[str] = None
+    REDIS_PASSWORD: Optional[str] = "REDIS_STRONG_PASSWORD"
 
     # Celery 配置
     CELERY_BROKER_URL: str = "redis://localhost:6379/0"
     CELERY_RESULT_BACKEND: str = "redis://localhost:6379/0"
 
     # LLM 配置
-    OPENAI_API_KEY: str = "sk-your-openai-api-key"
+    OPENAI_API_KEY: str = "sk-e4121ff513d74e89b9e1c9c1cdfd7085"
+    OPENAI_API_BASE: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    OPENAI_MODEL: str = "qwen-vl-max"  # 也可以使用 qwen-vl-max-latest
     ANTHROPIC_API_KEY: str = "sk-ant-your-anthropic-api-key"
+
+    # DashScope 特定配置
+    DASHSCOPE_MAX_RETRIES: int = 5
+    DASHSCOPE_TIMEOUT: int = 120
+
+    # 文件存储配置
+    DATA_DIR: str = "data"
+    TEMP_DIR: str = "data/temp"
+    UPLOAD_DIR: str = "data/uploads"
+    VECTOR_DB_DIR: str = "data/vector_db"
+
+    # 文档处理配置
+    USE_LLM_FOR_DOCUMENT_PROCESSING: bool = True
+    CHUNK_SIZE: int = 1000
+    CHUNK_OVERLAP: int = 200
 
     # 超级用户配置
     FIRST_SUPERUSER_EMAIL: str = "admin@example.com"
