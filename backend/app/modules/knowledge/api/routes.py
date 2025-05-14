@@ -3,11 +3,14 @@
 """
 知识库相关路由
 """
+
+import asyncio
+import logging
+import os
+from datetime import datetime
 from typing import Any, List
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
-from sqlalchemy.orm import Session
-
+from app.core.thread_pool import thread_pool
 from app.db.session import get_db
 from app.modules.auth.api.deps import get_current_active_user
 from app.modules.auth.models.user import User
@@ -15,12 +18,66 @@ from app.modules.knowledge import crud
 from app.modules.knowledge.schemas.knowledge_base import (
     Document,
     DocumentCreate,
+    DocumentProcessTask,
+    DocumentProcessTaskCreate,
     KnowledgeBase,
     KnowledgeBaseCreate,
     KnowledgeBaseUpdate,
 )
+from app.modules.knowledge.services.document_task_processor import process_document
+from app.modules.knowledge.services.minio import MinioService
+from app.modules.knowledge.services.vector_store import VectorStore
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from sqlalchemy.orm import Session
 
 router = APIRouter()
+
+logger = logging.getLogger(__name__)
+
+
+async def process_document_task(task_id: int):
+    """
+    异步处理文档任务
+
+    使用线程池执行文档处理，不会阻塞主应用程序
+
+    Args:
+        task_id: 任务 ID
+    """
+    logger.info(f"提交文档处理任务到线程池: {task_id}")
+
+    # 使用线程池提交任务
+    future = thread_pool.submit(f"document_task_{task_id}", process_document, task_id)
+
+    # 不等待任务完成，立即返回
+    logger.info(f"文档处理任务已提交到线程池: {task_id}")
+
+    # 添加一个短暂的延迟，确保任务已经开始执行
+    await asyncio.sleep(0.1)
+
+    return future
+
+
+@router.get("/test")
+def test_route():
+    """
+    测试路由
+    """
+    logger.info("测试路由被调用")
+    return {"message": "API 正常工作"}
+
+
+@router.get("/test-auth")
+def test_auth_route(current_user: User = Depends(get_current_active_user)):
+    """
+    测试认证路由
+    """
+    logger.info(f"认证测试路由被调用，用户 ID: {current_user.id}")
+    return {
+        "message": "认证成功",
+        "user_id": current_user.id,
+        "username": current_user.username,
+    }
 
 
 @router.post("/knowledge-bases", response_model=KnowledgeBase)
@@ -128,6 +185,12 @@ def delete_knowledge_base(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="没有足够的权限",
         )
+
+    # 删除向量数据库中的集合
+    vector_store = VectorStore()
+    collection_name = vector_store.get_knowledge_base_collection_name(knowledge_base_id)
+    vector_store.delete_collection(collection_name)
+
     knowledge_base = crud.knowledge_base.remove(db=db, id=knowledge_base_id)
     return knowledge_base
 
@@ -160,7 +223,9 @@ def create_document(
     return document
 
 
-@router.get("/knowledge-bases/{knowledge_base_id}/documents", response_model=List[Document])
+@router.get(
+    "/knowledge-bases/{knowledge_base_id}/documents", response_model=List[Document]
+)
 def read_documents(
     *,
     db: Session = Depends(get_db),
@@ -187,3 +252,174 @@ def read_documents(
         db=db, knowledge_base_id=knowledge_base_id, skip=skip, limit=limit
     )
     return documents
+
+
+@router.post(
+    "/knowledge-bases/{knowledge_base_id}/upload", response_model=DocumentProcessTask
+)
+async def upload_document(
+    *,
+    db: Session = Depends(get_db),
+    knowledge_base_id: int,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_active_user),
+) -> Any:
+    """
+    上传文档到知识库（异步处理）
+
+    上传文件后立即返回任务信息，文件处理在后台异步进行
+    """
+    logger.info(
+        f"开始处理文件上传: {file.filename}, 大小: {file.size if hasattr(file, 'size') else '未知'}"
+    )
+
+    # 检查知识库是否存在
+    knowledge_base = crud.knowledge_base.get(db=db, id=knowledge_base_id)
+    if not knowledge_base:
+        logger.error(f"知识库不存在: {knowledge_base_id}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="知识库不存在",
+        )
+
+    # 检查权限
+    if knowledge_base.user_id != current_user.id:
+        logger.error(f"用户 {current_user.id} 没有权限访问知识库 {knowledge_base_id}")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="没有足够的权限",
+        )
+
+    # 检查文件类型
+    file_extension = os.path.splitext(file.filename)[1].lower()
+    logger.info(f"文件类型: {file_extension}")
+
+    if file_extension not in [".pdf", ".txt", ".md", ".doc", ".docx"]:
+        logger.error(f"不支持的文件类型: {file_extension}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="不支持的文件类型，目前仅支持 PDF、TXT、Markdown、Word 文档",
+        )
+
+    # 读取文件内容
+    file_content = await file.read()
+
+    # 生成 MinIO 中的文件路径
+    file_type = file_extension[1:]  # 去掉点号
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    minio_file_path = f"knowledge_base/{knowledge_base_id}/{timestamp}_{file.filename}"
+
+    # 上传文件到 MinIO
+    minio_service = MinioService()
+    upload_success = minio_service.upload_file(
+        file_path=minio_file_path,
+        file_content=file_content,
+        content_type=f"application/{file_type}",
+    )
+
+    if not upload_success:
+        logger.error(f"上传文件到 MinIO 失败: {minio_file_path}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="上传文件到 MinIO 失败",
+        )
+    else:
+        logger.info(f"上传文件到 MinIO 成功: {minio_file_path}")
+
+    try:
+        # 创建文档处理任务
+        task_in = DocumentProcessTaskCreate(
+            file_name=file.filename,
+            file_path=minio_file_path,
+            file_type=file_type,
+            knowledge_base_id=knowledge_base_id,
+            user_id=current_user.id,
+        )
+
+        task = crud.document_process_task.create(db=db, obj_in=task_in)
+        logger.info(f"创建文档处理任务成功，ID: {task.id}")
+
+        # 启动后台任务处理文档
+        # 使用线程池处理文档，不会阻塞主应用程序
+        logger.info(f"启动后台任务处理文档，任务ID: {task.id}")
+        thread_pool.submit(f"document_task_{task.id}", process_document, task.id)
+
+        # 记录文件大小信息，帮助调试
+        file_size_mb = len(file_content) / (1024 * 1024)
+        logger.info(f"文件大小: {file_size_mb:.2f} MB")
+
+        return task
+
+    except Exception as e:
+        logger.error(f"创建文档处理任务时出错: {str(e)}")
+        # 删除 MinIO 中的文件
+        minio_service.delete_file(minio_file_path)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"创建文档处理任务时出错: {str(e)}",
+        )
+
+
+@router.get("/document-tasks/{task_id}", response_model=DocumentProcessTask)
+def get_document_task(
+    *,
+    db: Session = Depends(get_db),
+    task_id: int,
+    current_user: User = Depends(get_current_active_user),
+) -> Any:
+    """
+    获取文档处理任务状态
+    """
+    task = crud.document_process_task.get(db=db, id=task_id)
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="任务不存在",
+        )
+
+    # 检查权限
+    knowledge_base = crud.knowledge_base.get(db=db, id=task.knowledge_base_id)
+    if not knowledge_base or knowledge_base.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="没有足够的权限",
+        )
+
+    return task
+
+
+@router.get(
+    "/knowledge-bases/{knowledge_base_id}/document-tasks",
+    response_model=List[DocumentProcessTask],
+)
+def get_knowledge_base_document_tasks(
+    *,
+    db: Session = Depends(get_db),
+    knowledge_base_id: int,
+    skip: int = 0,
+    limit: int = 100,
+    current_user: User = Depends(get_current_active_user),
+) -> Any:
+    """
+    获取知识库的所有文档处理任务
+    """
+    # 检查知识库是否存在
+    knowledge_base = crud.knowledge_base.get(db=db, id=knowledge_base_id)
+    if not knowledge_base:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="知识库不存在",
+        )
+
+    # 检查权限
+    if knowledge_base.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="没有足够的权限",
+        )
+
+    tasks = crud.document_process_task.get_multi_by_knowledge_base(
+        db=db, knowledge_base_id=knowledge_base_id, skip=skip, limit=limit
+    )
+
+    return tasks
