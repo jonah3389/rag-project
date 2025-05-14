@@ -7,13 +7,12 @@
 import logging
 import os
 import uuid
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import chromadb
+from app.core.config import settings
 from chromadb.config import Settings
 from sentence_transformers import SentenceTransformer
-
-from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -152,22 +151,30 @@ class VectorStore:
     def search(
         self,
         collection_name: str,
-        query_text: str,
-        n_results: int = 5,
-        where: Optional[Dict[str, Any]] = None,
-    ) -> Tuple[List[str], List[Dict[str, Any]], List[float]]:
+        query: str,
+        limit: int = 5,
+        filter: Optional[Dict[str, Any]] = None,
+    ) -> List[Any]:
         """
         搜索向量数据库
 
         Args:
             collection_name: 集合名称
-            query_text: 查询文本
-            n_results: 返回结果数量
-            where: 过滤条件
+            query: 查询文本
+            limit: 返回结果数量
+            filter: 过滤条件
 
         Returns:
-            匹配的文档、元数据和相似度分数
+            搜索结果列表，每个结果包含文档内容、元数据和相似度分数
         """
+        from dataclasses import dataclass
+
+        @dataclass
+        class SearchResult:
+            page_content: str
+            metadata: Dict[str, Any]
+            score: float
+
         try:
             # 获取集合
             collection = self.get_collection(
@@ -175,11 +182,11 @@ class VectorStore:
             )
 
             # 获取查询文本的嵌入向量
-            query_embedding = self.get_embedding(query_text)
+            query_embedding = self.get_embedding(query)
 
             # 搜索
             results = collection.query(
-                query_embeddings=[query_embedding], n_results=n_results, where=where
+                query_embeddings=[query_embedding], n_results=limit, where=filter
             )
 
             # 解析结果
@@ -191,13 +198,27 @@ class VectorStore:
             scores = [1 - distance for distance in distances]
 
             logger.info(
-                f"在集合 {collection_name} 中搜索 '{query_text}' 找到 {len(documents)} 个结果"
+                f"在集合 {collection_name} 中搜索 '{query}' 找到 {len(documents)} 个结果"
             )
 
-            return documents, metadatas, scores
+            # 构建结果列表
+            search_results = []
+            for i in range(len(documents)):
+                search_results.append(
+                    SearchResult(
+                        page_content=documents[i],
+                        metadata=metadatas[i] if i < len(metadatas) else {},
+                        score=scores[i] if i < len(scores) else 0.0,
+                    )
+                )
+
+            return search_results
         except ValueError as e:
             logger.error(f"搜索集合 {collection_name} 时出错: {str(e)}")
-            return [], [], []
+            return []
+        except Exception as e:
+            logger.error(f"搜索集合 {collection_name} 时出错: {str(e)}")
+            return []
 
     def delete_collection(self, collection_name: str) -> bool:
         """
@@ -215,6 +236,62 @@ class VectorStore:
             return True
         except ValueError as e:
             logger.error(f"删除集合 {collection_name} 时出错: {str(e)}")
+            return False
+
+    def delete_by_metadata(
+        self,
+        collection_name: str,
+        metadata_key: str,
+        metadata_value: Any,
+    ) -> bool:
+        """
+        按元数据删除文档
+
+        Args:
+            collection_name: 集合名称
+            metadata_key: 元数据键
+            metadata_value: 元数据值
+
+        Returns:
+            是否成功删除
+        """
+        try:
+            # 获取集合
+            collection = self.get_collection(
+                collection_name, create_if_not_exists=False
+            )
+
+            # 构建过滤条件
+            where_filter = {metadata_key: metadata_value}
+
+            # 查询匹配的文档
+            results = collection.query(
+                query_embeddings=None,
+                where=where_filter,
+                include=["documents", "metadatas", "embeddings", "distances", "ids"],
+            )
+
+            # 获取文档ID
+            ids = results.get("ids", [[]])[0]
+
+            if not ids:
+                logger.warning(
+                    f"在集合 {collection_name} 中没有找到匹配条件 {metadata_key}={metadata_value} 的文档"
+                )
+                return False
+
+            # 删除文档
+            collection.delete(ids=ids)
+
+            logger.info(
+                f"从集合 {collection_name} 中删除了 {len(ids)} 个匹配条件 {metadata_key}={metadata_value} 的文档"
+            )
+
+            return True
+        except Exception as e:
+            logger.error(
+                f"从集合 {collection_name} 中删除匹配条件 {metadata_key}={metadata_value} 的文档时出错: {str(e)}"
+            )
             return False
 
     def get_knowledge_base_collection_name(self, knowledge_base_id: int) -> str:
