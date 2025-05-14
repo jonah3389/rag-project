@@ -22,6 +22,7 @@ try:
         settings.SQLALCHEMY_DATABASE_URI,
         pool_pre_ping=True,
         echo=True,
+        connect_args={"init_command": "SET time_zone = '+08:00'"},
     )
     # 创建会话工厂
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

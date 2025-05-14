@@ -13,12 +13,17 @@ class CustomBase:
     @declared_attr
     def __tablename__(cls) -> str:
         """
-        生成表名
+        生成表名，将驼峰命名转换为下划线命名
+        例如：KnowledgeBase -> knowledge_base
 
         Returns:
             str: 表名
         """
-        return cls.__name__.lower()
+        import re
+
+        # 将驼峰命名转换为下划线命名
+        name = re.sub("((?<=[a-z0-9])[A-Z]|(?!^)[A-Z](?=[a-z]))", r"_\1", cls.__name__)
+        return name.lower()
 
 
 # 创建基类
