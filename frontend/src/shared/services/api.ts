@@ -6,7 +6,7 @@ import axios from 'axios';
 const api = axios.create({
   // 使用相对路径，通过 Vite 代理转发到后端
   baseURL: '/api/v1',
-  timeout: 10000,
+  timeout: 120000, // 增加超时时间到 120 秒 (2分钟)
   headers: {
     'Content-Type': 'application/json',
   },
