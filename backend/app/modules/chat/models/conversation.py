@@ -4,11 +4,16 @@
 对话模型
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.db.base import Base
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
+
+
+def get_now_datetime():
+    """获取当前时间（带时区）"""
+    return datetime.now(timezone.utc)
 
 
 class Conversation(Base):
@@ -17,10 +22,10 @@ class Conversation(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     title = Column(String(128), nullable=False)
     user_id = Column(Integer, ForeignKey("user.id"), nullable=False)
-    llm_config_id = Column(Integer, ForeignKey("llmconfig.id"), nullable=True)
-    knowledge_base_id = Column(Integer, ForeignKey("knowledgebase.id"), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    llm_config_id = Column(Integer, ForeignKey("llm_config.id"), nullable=True)
+    knowledge_base_id = Column(Integer, ForeignKey("knowledge_base.id"), nullable=True)
+    created_at = Column(DateTime, default=get_now_datetime)
+    updated_at = Column(DateTime, default=get_now_datetime, onupdate=get_now_datetime)
 
     # 关系
     user = relationship(
@@ -47,7 +52,7 @@ class Message(Base):
     conversation_id = Column(Integer, ForeignKey("conversation.id"), nullable=False)
     role = Column(String(16), nullable=False)  # user, assistant, system
     content = Column(Text, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=get_now_datetime)
 
     # 关系
     conversation = relationship("Conversation", back_populates="messages")

@@ -53,12 +53,15 @@ rag-project/
 
 ## 开发环境设置
 
+详细的开发环境配置请参考 [开发环境配置.md](开发环境配置.md) 文件。
+
 ### 后端
 
 1. 创建 Python 虚拟环境
 
 ```bash
-python -m venv .venv
+# 使用 uv 创建虚拟环境
+uv venv
 source .venv/bin/activate  # Linux/Mac
 .venv\Scripts\activate     # Windows
 ```
@@ -67,13 +70,21 @@ source .venv/bin/activate  # Linux/Mac
 
 ```bash
 cd backend
-pip install -r requirements.txt
+# 使用 uv 安装依赖
+uv pip install -r requirements.txt
 ```
 
-3. 启动后端服务
+3. 初始化数据库
 
 ```bash
-uvicorn main:app --reload
+cd backend
+python scripts/init.py
+```
+
+4. 启动后端服务
+
+```bash
+python main.py
 ```
 
 ### 前端
@@ -91,6 +102,10 @@ npm install
 npm run dev
 ```
 
+3. 访问前端应用
+
+打开浏览器访问 http://localhost:5173
+
 ## API 文档
 
 启动后端服务后，可以通过以下 URL 访问 API 文档：
@@ -98,19 +113,47 @@ npm run dev
 - Swagger UI: http://localhost:8000/api/v1/docs
 - ReDoc: http://localhost:8000/api/v1/redoc
 
+## 项目特点
+
+1. **模块化架构**：采用以功能模块为中心的组织方式，便于扩展和维护
+2. **前后端分离**：前端使用 React + TypeScript，后端使用 FastAPI
+3. **CORS 支持**：完善的跨域资源共享配置，支持前后端分离开发
+4. **数据库关系优化**：使用延迟加载和 joined 加载优化查询性能
+5. **代理配置**：前端使用 Vite 代理，简化开发环境配置
+
 ## 部署
 
-### 使用 Docker Compose
+### 依赖服务
 
-1. 构建并启动服务
+项目使用 Docker 部署依赖服务（MySQL、Redis、MinIO），但项目本身不部署到 Docker 中，这样可以方便本地开发和调试。
 
 ```bash
-docker-compose up -d
+# 启动依赖服务
+./start-deps.sh
+
+# 停止依赖服务
+./stop-deps.sh
 ```
 
-2. 访问应用
+### 生产环境部署
 
-前端: http://localhost:3000
+1. 构建前端
+
+```bash
+cd frontend
+npm run build
+```
+
+2. 启动后端服务
+
+```bash
+cd backend
+uvicorn main:app --host 0.0.0.0 --port 8000
+```
+
+3. 访问应用
+
+前端: 部署静态文件到 Web 服务器
 后端 API: http://localhost:8000
 
 ## 贡献指南
