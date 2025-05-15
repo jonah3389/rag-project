@@ -10,4 +10,4 @@ if [ -d "venv" ]; then
 fi
 
 # 启动Celery Worker
-celery -A celery_app.celery worker --loglevel=info
+celery -A celery_app.celery worker --loglevel=info -P solo
