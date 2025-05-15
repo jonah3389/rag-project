@@ -3,9 +3,9 @@
 """
 Celery 配置
 """
-from celery import Celery
 
 from app.core.config import settings
+from celery import Celery
 
 # 创建 Celery 实例
 celery_app = Celery(
@@ -13,8 +13,7 @@ celery_app = Celery(
     broker=settings.CELERY_BROKER_URL,
     backend=settings.CELERY_RESULT_BACKEND,
     include=[
-        "app.modules.document.tasks.document_processing",
-        "app.modules.knowledge.tasks.indexing",
+        "app.modules.knowledge.tasks.document_processing",
     ],
 )
 
