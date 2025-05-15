@@ -13,6 +13,9 @@ const api = axios.create({
   withCredentials: true, // 允许跨域请求携带 cookies
 });
 
+// 添加一个标志，防止多次跳转登录页面
+let isRedirecting = false;
+
 // 请求拦截器
 api.interceptors.request.use(
   (config) => {
@@ -37,9 +40,29 @@ api.interceptors.response.use(
     if (error.response) {
       // 处理 401 未授权错误
       if (error.response.status === 401) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
+        // 防止重复跳转到登录页面
+        if (!isRedirecting) {
+          isRedirecting = true;
+          console.log('收到401未授权响应，正在清除认证状态');
+
+          // 清除认证状态
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+
+          // 如果不是登录页面，则重定向到登录页面
+          const currentPath = window.location.pathname;
+          if (currentPath !== '/login' && currentPath !== '/register') {
+            console.log('重定向到登录页面');
+            // 使用会话存储保存当前路径，以便登录后返回
+            sessionStorage.setItem('redirectPath', currentPath);
+            window.location.href = '/login';
+          } else {
+            // 重置重定向标志
+            setTimeout(() => {
+              isRedirecting = false;
+            }, 1000);
+          }
+        }
       }
 
       // 处理其他错误

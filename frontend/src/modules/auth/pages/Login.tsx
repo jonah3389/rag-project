@@ -15,7 +15,7 @@ const Login = () => {
   const location = useLocation();
 
   // 获取重定向路径
-  const from = location.state?.from?.pathname || '/dashboard';
+  const from = location.state?.from?.pathname || sessionStorage.getItem('redirectPath') || '/dashboard';
 
   // 检查是否有来自注册页面的消息
   useEffect(() => {
@@ -24,6 +24,12 @@ const Login = () => {
       setSuccess(message);
       // 清除 location state 中的消息，防止刷新后再次显示
       window.history.replaceState({}, document.title);
+    }
+
+    // 获取完成后清除会话存储中的重定向路径
+    if (sessionStorage.getItem('redirectPath')) {
+      console.log('从会话存储获取重定向路径:', sessionStorage.getItem('redirectPath'));
+      sessionStorage.removeItem('redirectPath');
     }
   }, [location.state]);
 
