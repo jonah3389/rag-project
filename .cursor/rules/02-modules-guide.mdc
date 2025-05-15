@@ -1,0 +1,33 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# 功能模块指南
+
+智能体综合应用平台包含以下核心功能模块：
+
+## 认证模块
+- 功能：用户注册、登录、权限管理
+- 后端: [backend/app/modules/auth](mdc:backend/app/modules/auth)
+- 前端: [frontend/src/modules/auth](mdc:frontend/src/modules/auth)
+
+## 智能客服模块
+- 功能：基于大语言模型的智能客服系统，支持多轮对话、上下文理解、流式响应
+- 后端: [backend/app/modules/chat](mdc:backend/app/modules/chat)
+- 前端: [frontend/src/modules/chat](mdc:frontend/src/modules/chat)
+
+## 知识库模块
+- 功能：支持文档上传、处理、搜索和检索，为智能客服提供知识支持
+- 后端: [backend/app/modules/knowledge](mdc:backend/app/modules/knowledge)
+- 前端: [frontend/src/modules/knowledge](mdc:frontend/src/modules/knowledge)
+
+## 文档处理模块
+- 功能：支持多种格式文档的处理和转换，包括PDF、Word、TXT等
+- 后端：已集成到知识库模块中
+- 前端: [frontend/src/modules/document](mdc:frontend/src/modules/document)
+
+## LLM配置模块
+- 功能：支持多种LLM提供商，用户可自定义配置
+- 后端: [backend/app/modules/llm](mdc:backend/app/modules/llm)
+- 前端: [frontend/src/modules/llm](mdc:frontend/src/modules/llm)

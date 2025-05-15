@@ -1,0 +1,31 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# 智能体综合应用平台项目结构
+
+## 项目概述
+
+智能体综合应用平台是一个基于大语言模型的综合性应用平台，集成了多种智能功能，包括智能客服、知识库管理、文档处理等模块。
+
+## 主要入口文件
+
+- 后端主入口: [backend/main.py](mdc:backend/main.py)
+- 前端主入口: [frontend/src/main.tsx](mdc:frontend/src/main.tsx)
+- 前端应用组件: [frontend/src/App.tsx](mdc:frontend/src/App.tsx)
+
+## 目录结构
+
+项目采用以功能模块为中心的组织方式，将相关的业务逻辑、API接口、数据模型等组织在对应功能模块下。
+
+### 后端结构
+- [backend/app/core](mdc:backend/app/core): 核心配置
+- [backend/app/modules](mdc:backend/app/modules): 功能模块
+- [backend/app/db](mdc:backend/app/db): 数据库相关
+- [backend/celery_app](mdc:backend/celery_app): Celery异步任务
+
+### 前端结构 
+- [frontend/src/modules](mdc:frontend/src/modules): 功能模块
+- [frontend/src/shared](mdc:frontend/src/shared): 共享组件
+- [frontend/src/router.tsx](mdc:frontend/src/router.tsx): 路由配置
